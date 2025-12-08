@@ -614,11 +614,11 @@ IGNORE;
 source aliases.sh
 
 # Créer un nouveau projet Symfony 8 directement dans www (depuis la racine)
-ccomposer create-project symfony/skeleton:"8.0.x" www/
+ccomposer create-project symfony/skeleton:"8.0.x" ./
 
 # Installer les dépendances supplémentaires
-ccomposer require symfony/orm-pack --working-dir=www
-ccomposer require symfony/maker-bundle --dev --working-dir=www
+ccomposer require symfony/orm-pack
+ccomposer require symfony/maker-bundle --dev
 
 # Déplacer le fichier .htaccess dans le dossier public de Symfony
 mv .htaccess www/public/.htaccess
