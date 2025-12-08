@@ -586,6 +586,22 @@ docker compose exec {$apacheContainer} symfony console cache:clear
 MD;
         }
         
+        // Construire la liste des outils
+        $tools = 'Composer 2';
+        if (self::$config['install_symfony_cli']) {
+            $tools .= ', Symfony CLI';
+        }
+        if (self::$config['install_node']) {
+            $tools .= ', Node.js 20 (via NVM)';
+        }
+        $tools .= ', Xdebug';
+        
+        // Construire la section Symfony pour les commandes
+        $symfonyCommands = '';
+        if (self::$config['install_symfony_cli']) {
+            $symfonyCommands = "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n";
+        }
+        
         $content = <<<MD
 # Recipe Docker - PHP/Symfony
 
@@ -596,7 +612,7 @@ Configuration Docker professionnelle pour un projet PHP/Symfony avec Apache, PHP
 - **PHP** : 8.4 avec Apache (mod_rewrite activé)
 - **Base de données** : MariaDB 11.3
 - **Extensions PHP** : GD, Intl, MySQLi, PDO, PDO_MySQL, Opcache
-- **Outils** : Composer 2{$symfonySection ? ', Symfony CLI' : ''}{$symfonySection ? ', Node.js 20 (via NVM)' : ''}, Xdebug
+- **Outils** : {$tools}
 
 ## 📋 Prérequis
 
@@ -665,9 +681,7 @@ source aliases.sh
 \`\`\`bash
 # Composer (installation de dépendances)
 ccomposer install
-ccomposer require package/name
-{$symfonySection ? "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n" : ""}
-# Accéder aux containers
+ccomposer require package/name{$symfonyCommands}# Accéder aux containers
 capache    # Entrer dans le container Apache
 cmariadb   # Entrer dans le container MariaDB
 
