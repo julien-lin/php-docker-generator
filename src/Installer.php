@@ -249,9 +249,6 @@ YAML;
         
         $content = "# 1. BASE IMAGE & ARGUMENTS\n";
         $content .= "FROM php:8.4-apache\n\n";
-        $content .= "# Arguments pour les versions (bonne pratique)\n";
-        $content .= "ARG NVM_VERSION=0.39.7\n";
-        $content .= "ARG NODE_VERSION=20\n\n";
         $content .= "# 2. SYSTÈME ET DÉPENDANCES\n";
         $content .= "RUN apt-get update \\\n";
         $content .= "    && apt-get install -y --no-install-recommends \\\n";
@@ -275,14 +272,9 @@ YAML;
         $content .= "        opcache\n\n";
         $content .= "# 4. COMPOSER\n";
         $content .= "COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\n\n";
-        
-        // Symfony CLI (conditionnel)
-        if (self::$config['install_symfony_cli']) {
-            $content .= "# 5. SYMFONY CLI\n";
-            $content .= "RUN wget https://get.symfony.com/cli/installer -O - | bash \\\n";
-            $content .= "  && mv /root/.symfony*/bin/symfony /usr/local/bin/symfony\n\n";
-        }
-        
+        $content .= "# 5. SYMFONY CLI\n";
+        $content .= "RUN wget https://get.symfony.com/cli/installer -O - | bash \\\n";
+        $content .= "  && mv /root/.symfony*/bin/symfony /usr/local/bin/symfony\n\n";
         $content .= "# 6. XDEBUG\n";
         $content .= "RUN pecl install xdebug \\\n";
         $content .= "    && docker-php-ext-enable xdebug\n\n";
@@ -292,10 +284,19 @@ YAML;
         // Node.js (conditionnel)
         if (self::$config['install_node']) {
             $content .= "# 7. NVM et NODE.JS\n";
-            $content .= "ENV NVM_DIR=/root/.nvm\n";
-            $content .= "ENV PATH=\$NVM_DIR/versions/node/v\$NODE_VERSION/bin:\$PATH\n\n";
-            $content .= "RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v\$NVM_VERSION/install.sh | bash \\\n";
-            $content .= "    && /bin/bash -c \"source \$NVM_DIR/nvm.sh && nvm install \$NODE_VERSION && nvm alias default \$NODE_VERSION && nvm use default\" \\\n";
+            $content .= "ENV NVM_DIR=/root/.nvm\n\n";
+            $content .= "RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash \\\n";
+            $content .= "    && /bin/bash -c \"source \$NVM_DIR/nvm.sh && nvm install node && nvm alias default node && nvm use default\" \\\n";
+            $content .= "    && NODE_VERSION=\$(/bin/bash -c \"source \$NVM_DIR/nvm.sh && node -v | sed 's/v//'\") \\\n";
+            $content .= "    && echo \"export NVM_DIR=\\\"\\\$NVM_DIR\\\"\" >> /etc/profile.d/nvm.sh \\\n";
+            $content .= "    && echo \"[ -s \\\"\\\$NVM_DIR/nvm.sh\\\" ] && \\. \\\"\\\$NVM_DIR/nvm.sh\\\"\" >> /etc/profile.d/nvm.sh \\\n";
+            $content .= "    && echo \"export PATH=\\\"\\\$NVM_DIR/versions/node/v\\\${NODE_VERSION}/bin:\\\$PATH\\\"\" >> /etc/profile.d/nvm.sh \\\n";
+            $content .= "    && echo \"export NVM_DIR=\\\"\\\$NVM_DIR\\\"\" >> /root/.bashrc \\\n";
+            $content .= "    && echo \"[ -s \\\"\\\$NVM_DIR/nvm.sh\\\" ] && \\. \\\"\\\$NVM_DIR/nvm.sh\\\"\" >> /root/.bashrc \\\n";
+            $content .= "    && echo \"[ -s \\\"\\\$NVM_DIR/bash_completion\\\" ] && \\. \\\"\\\$NVM_DIR/bash_completion\\\"\" >> /root/.bashrc \\\n";
+            $content .= "    && ln -sf \$NVM_DIR/versions/node/v\${NODE_VERSION}/bin/node /usr/local/bin/node \\\n";
+            $content .= "    && ln -sf \$NVM_DIR/versions/node/v\${NODE_VERSION}/bin/npm /usr/local/bin/npm \\\n";
+            $content .= "    && ln -sf \$NVM_DIR/versions/node/v\${NODE_VERSION}/bin/npx /usr/local/bin/npx \\\n";
             $content .= "    && rm -rf /tmp/*\n\n";
         }
         
@@ -374,13 +375,10 @@ MARIADB_CONTAINER="\${MARIADB_CONTAINER:-{$mariadbContainer}}"
 
 # alias pour installer une librairie composer
 alias ccomposer='docker compose exec \${APACHE_CONTAINER} composer'
+
+# alias pour utiliser le wizard symfony
+alias cconsole='docker compose exec \${APACHE_CONTAINER} symfony console'
 BASH;
-        
-        // Ajouter Symfony CLI alias si installé
-        if (self::$config['install_symfony_cli']) {
-            $content .= "\n# alias pour utiliser le wizard symfony\n";
-            $content .= "alias cconsole='docker compose exec \${APACHE_CONTAINER} symfony console'\n";
-        }
         
         $content .= <<<BASH
 
@@ -551,9 +549,8 @@ IGNORE;
         $apachePort = self::$config['apache_port'];
         $mariadbPort = self::$config['mariadb_port'];
         
-        $symfonySection = '';
-        if (self::$config['install_symfony_cli']) {
-            $symfonySection = <<<MD
+        // Symfony CLI est toujours installé maintenant
+        $symfonySection = <<<MD
 
 ## 🎯 Configuration Symfony
 
@@ -584,23 +581,16 @@ cconsole doctrine:database:create
 docker compose exec {$apacheContainer} symfony console cache:clear
 ```
 MD;
-        }
         
         // Construire la liste des outils
-        $tools = 'Composer 2';
-        if (self::$config['install_symfony_cli']) {
-            $tools .= ', Symfony CLI';
-        }
+        $tools = 'Composer 2, Symfony CLI';
         if (self::$config['install_node']) {
-            $tools .= ', Node.js 20 (via NVM)';
+            $tools .= ', Node.js (via NVM - dernière version)';
         }
         $tools .= ', Xdebug';
         
-        // Construire la section Symfony pour les commandes
-        $symfonyCommands = '';
-        if (self::$config['install_symfony_cli']) {
-            $symfonyCommands = "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n";
-        }
+        // Construire la section Symfony pour les commandes (toujours disponible)
+        $symfonyCommands = "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n";
         
         $content = <<<MD
 # Recipe Docker - PHP/Symfony
