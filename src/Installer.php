@@ -117,7 +117,50 @@ class Installer
         self::createGitignore($baseDir);
         self::createReadme($baseDir);
         
+        // Nettoyer les fichiers indésirables
+        self::cleanupUnwantedFiles($baseDir);
+        
         echo "✅ Tous les fichiers ont été générés avec succès!\n";
+    }
+    
+    private static function cleanupUnwantedFiles(string $baseDir): void
+    {
+        echo "\n🧹 Nettoyage des fichiers indésirables...\n";
+        
+        $filesToRemove = [
+            $baseDir . '/vendor',
+            $baseDir . '/composer.json',
+            $baseDir . '/composer.lock',
+            $baseDir . '/README.fr.md',
+        ];
+        
+        foreach ($filesToRemove as $path) {
+            if (is_dir($path)) {
+                self::removeDirectory($path);
+                echo "  ✓ Supprimé: " . basename($path) . "/\n";
+            } elseif (is_file($path)) {
+                unlink($path);
+                echo "  ✓ Supprimé: " . basename($path) . "\n";
+            }
+        }
+    }
+    
+    private static function removeDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            if (is_dir($path)) {
+                self::removeDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
     }
     
     private static function getProjectRoot(): string
@@ -564,31 +607,73 @@ IGNORE;
 
 ## 🎯 Configuration Symfony
 
-### Installation d'un nouveau projet
+### Installation d'un nouveau projet Symfony
 
 ```bash
-# Entrer dans le container Apache
-capache
+# Charger les aliases (si pas déjà fait)
+source aliases.sh
 
 # Créer un nouveau projet Symfony 8 directement dans www
-cd /var/www/html
-composer create-project symfony/skeleton:"8.0.x" ./
+cd www
+ccomposer create-project symfony/skeleton:"8.0.x" ./
 
 # Installer les dépendances supplémentaires
-composer require symfony/orm-pack
-composer require symfony/maker-bundle --dev
+ccomposer require symfony/orm-pack
+ccomposer require symfony/maker-bundle --dev
 ```
 
-### Commandes Symfony utiles
+### Commandes Symfony principales
+
+#### Avec les aliases (recommandé)
 
 ```bash
-# Via alias
+# Cache
 cconsole cache:clear
-cconsole doctrine:migrations:migrate
-cconsole doctrine:database:create
+cconsole cache:warmup
 
-# Ou sans alias
+# Base de données
+cconsole doctrine:database:create
+cconsole doctrine:migrations:migrate
+cconsole doctrine:migrations:status
+cconsole doctrine:schema:update --force
+
+# Génération de code
+cconsole make:controller NomDuController
+cconsole make:entity NomDeLEntity
+cconsole make:form NomDuForm
+cconsole make:command NomDeLaCommande
+
+# Debug et informations
+cconsole debug:router
+cconsole debug:container
+cconsole debug:autowiring
+cconsole about
+```
+
+#### Sans aliases (avec docker compose exec)
+
+```bash
+# Cache
 docker compose exec {$apacheContainer} symfony console cache:clear
+docker compose exec {$apacheContainer} symfony console cache:warmup
+
+# Base de données
+docker compose exec {$apacheContainer} symfony console doctrine:database:create
+docker compose exec {$apacheContainer} symfony console doctrine:migrations:migrate
+docker compose exec {$apacheContainer} symfony console doctrine:migrations:status
+docker compose exec {$apacheContainer} symfony console doctrine:schema:update --force
+
+# Génération de code
+docker compose exec {$apacheContainer} symfony console make:controller NomDuController
+docker compose exec {$apacheContainer} symfony console make:entity NomDeLEntity
+docker compose exec {$apacheContainer} symfony console make:form NomDuForm
+docker compose exec {$apacheContainer} symfony console make:command NomDeLaCommande
+
+# Debug et informations
+docker compose exec {$apacheContainer} symfony console debug:router
+docker compose exec {$apacheContainer} symfony console debug:container
+docker compose exec {$apacheContainer} symfony console debug:autowiring
+docker compose exec {$apacheContainer} symfony console about
 ```
 MD;
         }
@@ -712,7 +797,7 @@ docker compose exec -it {$mariadbContainer} bash
 docker compose exec {$mariadbContainer} /docker-entrypoint-initdb.d/backup.sh
 docker compose exec {$mariadbContainer} /docker-entrypoint-initdb.d/restore.sh
 \`\`\`
-
+{$symfonySection}
 ## 🔒 Sécurité
 
 ### Bonnes pratiques implémentées
