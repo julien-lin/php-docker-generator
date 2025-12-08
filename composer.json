@@ -1,0 +1,46 @@
+{
+    "name": "julienlinard/php-docker-generator",
+    "description": "Générateur de recettes Docker pour projets PHP/Symfony avec Apache et MariaDB",
+    "type": "project",
+    "keywords": [
+        "docker",
+        "docker-compose",
+        "php",
+        "symfony",
+        "apache",
+        "mariadb",
+        "generator",
+        "recipe",
+        "template"
+    ],
+    "homepage": "https://github.com/julien-lin/php-docker-generator",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Julien Linard",
+            "email": "julien.linard.dev@gmail.com",
+            "homepage": "https://github.com/julien-lin"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/julien-lin/php-docker-generator/issues",
+        "source": "https://github.com/julien-lin/php-docker-generator"
+    },
+    "require": {
+        "php": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Julien\\": "src/"
+        }
+    },
+    "scripts": {
+        "post-create-project-cmd": [
+            "Julien\\Installer::postInstall"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "version": "1.0.0"
+}
+
