@@ -272,18 +272,23 @@ YAML;
         $content .= "        opcache\n\n";
         $content .= "# 4. COMPOSER\n";
         $content .= "COPY --from=composer:latest /usr/bin/composer /usr/bin/composer\n\n";
-        $content .= "# 5. SYMFONY CLI\n";
-        $content .= "RUN wget https://get.symfony.com/cli/installer -O - | bash \\\n";
-        $content .= "  && mv /root/.symfony*/bin/symfony /usr/local/bin/symfony\n\n";
+        
+        // Symfony CLI (conditionnel - dernière version)
+        if (self::$config['install_symfony_cli']) {
+            $content .= "# 5. SYMFONY CLI (dernière version)\n";
+            $content .= "RUN wget https://get.symfony.com/cli/installer -O - | bash \\\n";
+            $content .= "  && mv /root/.symfony*/bin/symfony /usr/local/bin/symfony\n\n";
+        }
+        
         $content .= "# 6. XDEBUG\n";
         $content .= "RUN pecl install xdebug \\\n";
         $content .= "    && docker-php-ext-enable xdebug\n\n";
         $content .= "# Copie de la configuration PHP personnalisée\n";
         $content .= "COPY custom-php.ini /usr/local/etc/php/conf.d/\n\n";
         
-        // Node.js (conditionnel)
+        // Node.js (conditionnel - dernière version)
         if (self::$config['install_node']) {
-            $content .= "# 7. NVM et NODE.JS\n";
+            $content .= "# 7. NVM et NODE.JS (dernière version)\n";
             $content .= "ENV NVM_DIR=/root/.nvm\n\n";
             $content .= "RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash \\\n";
             $content .= "    && /bin/bash -c \"source \$NVM_DIR/nvm.sh && nvm install node && nvm alias default node && nvm use default\" \\\n";
@@ -375,10 +380,13 @@ MARIADB_CONTAINER="\${MARIADB_CONTAINER:-{$mariadbContainer}}"
 
 # alias pour installer une librairie composer
 alias ccomposer='docker compose exec \${APACHE_CONTAINER} composer'
-
-# alias pour utiliser le wizard symfony
-alias cconsole='docker compose exec \${APACHE_CONTAINER} symfony console'
 BASH;
+        
+        // Ajouter Symfony CLI alias si installé
+        if (self::$config['install_symfony_cli']) {
+            $content .= "\n# alias pour utiliser le wizard symfony\n";
+            $content .= "alias cconsole='docker compose exec \${APACHE_CONTAINER} symfony console'\n";
+        }
         
         $content .= <<<BASH
 
@@ -549,8 +557,10 @@ IGNORE;
         $apachePort = self::$config['apache_port'];
         $mariadbPort = self::$config['mariadb_port'];
         
-        // Symfony CLI est toujours installé maintenant
-        $symfonySection = <<<MD
+        // Section Symfony (conditionnelle)
+        $symfonySection = '';
+        if (self::$config['install_symfony_cli']) {
+            $symfonySection = <<<MD
 
 ## 🎯 Configuration Symfony
 
@@ -581,16 +591,23 @@ cconsole doctrine:database:create
 docker compose exec {$apacheContainer} symfony console cache:clear
 ```
 MD;
+        }
         
         // Construire la liste des outils
-        $tools = 'Composer 2, Symfony CLI';
+        $tools = 'Composer 2';
+        if (self::$config['install_symfony_cli']) {
+            $tools .= ', Symfony CLI (dernière version)';
+        }
         if (self::$config['install_node']) {
             $tools .= ', Node.js (via NVM - dernière version)';
         }
         $tools .= ', Xdebug';
         
-        // Construire la section Symfony pour les commandes (toujours disponible)
-        $symfonyCommands = "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n";
+        // Construire la section Symfony pour les commandes (conditionnelle)
+        $symfonyCommands = '';
+        if (self::$config['install_symfony_cli']) {
+            $symfonyCommands = "\n# Symfony Console\ncconsole cache:clear\ncconsole doctrine:migrations:migrate\n";
+        }
         
         $content = <<<MD
 # Recipe Docker - PHP/Symfony
