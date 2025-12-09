@@ -132,6 +132,7 @@ class Installer
             $baseDir . '/composer.json',
             $baseDir . '/composer.lock',
             $baseDir . '/README.fr.md',
+            $baseDir . '/src',
         ];
         
         foreach ($filesToRemove as $path) {
