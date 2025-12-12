@@ -457,7 +457,6 @@ BASH;
         // backup.sh
         $backupContent = <<<'SH'
 #!/usr/bin/sh
-set -euo pipefail
 
 if [ -z "${MYSQL_DATABASE:-}" ]; then
   echo "Erreur : La variable d'environnement MYSQL_DATABASE n'est pas définie." >&2
@@ -497,7 +496,6 @@ SH;
         // restore.sh
         $restoreContent = <<<'SH'
 #!/usr/bin/sh
-set -euo pipefail
 
 if [ -z "${MYSQL_DATABASE:-}" ]; then
   echo "Erreur : La variable d'environnement MYSQL_DATABASE n'est pas définie." >&2
@@ -588,7 +586,6 @@ IGNORE;
 /.vscode/
 *.log
 .DS_Store
-/www/
 IGNORE;
         
         file_put_contents($baseDir . '/.gitignore', $content);
